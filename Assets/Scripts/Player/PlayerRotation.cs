@@ -4,20 +4,16 @@ using UnityEngine;
 
 public class PlayerRotation : MonoBehaviour
 {
-    // controller script reference
-    [SerializeField] internal Controller controller;
+    // component references
+    [SerializeField] private Camera cam;
 
-    // other vars
-    internal Camera cam;
+    // other variables
+    [SerializeField] private float rotationOffset;
 
-    void Start() {
-        cam = Camera.main;
-    }
-
-    void Update() {
+    private void Update()
+    {
         Vector3 mouseVector = cam.ScreenToWorldPoint(Input.mousePosition) - transform.position;
         float angle = Mathf.Atan2(mouseVector.y, mouseVector.x) * Mathf.Rad2Deg;
-        Quaternion rotation = Quaternion.Euler(0f, 0f, angle - controller.rotationOffset);
-        transform.rotation = rotation;
+        transform.rotation = Quaternion.Euler(0f, 0f, angle - rotationOffset);
     }
 }

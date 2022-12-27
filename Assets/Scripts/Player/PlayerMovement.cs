@@ -1,42 +1,75 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
-    // controller script referejce
-    [SerializeField] internal Controller controller;
+    // component references
+    [SerializeField] internal PlayerData data;
+    [SerializeField] private Rigidbody2D rigidBody;
 
-    // other vars
-    internal Vector2 velocity;
-    internal float speed;
-    internal float speedScale;
+    // other variables
+    private float moveSpeed;
+    private float dashSpeed;
+    private float remainingDashDuration;
+    private float nextDashTime;
+    private bool isDashing;
+    private Vector2 direction;
+    private Vector2 dashDirection;
 
-    void Start()
+    private void Start()
     {
-        speedScale = controller.rigidBody.drag;
+        moveSpeed = data.playerClass.moveSpeed;
+        dashSpeed = data.playerClass.dashSpeed;
+        nextDashTime = 0f;
+
+        // subscribe to relevant events from the static instance of the game event manager
+        GameEventManager.instance.onLeftShiftPressed += Dash;
     }
 
-    void Update()
+    private void OnDestroy()
     {
-        if (controller.inputs.isDashing)
+        // unsubscribe to the event when the game object this script is attached to is deleted
+        GameEventManager.instance.onLeftShiftPressed -= Dash;
+    }
+
+    private void Update()
+    {
+        if (Input.GetKeyDown("left shift"))
         {
-            if (controller.inputs.remainingDashDuration == controller.dashDuration)
+            GameEventManager.instance.leftShiftPressed();
+        }
+        if (isDashing)
+        {
+            if (remainingDashDuration > 0f)
             {
-                velocity = controller.inputs.direction;
+                rigidBody.AddForce(dashDirection * dashSpeed, ForceMode2D.Impulse);
+                remainingDashDuration -= Time.deltaTime;
             }
-            speed = controller.dashSpeed * speedScale;
+            else
+            {
+                direction = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical")).normalized;
+                rigidBody.AddForce(direction * moveSpeed, ForceMode2D.Impulse);
+                isDashing = false;
+            }
         }
         else
         {
-            velocity = controller.inputs.direction;
-            speed = controller.moveSpeed * speedScale;
+            direction = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical")).normalized;
+            rigidBody.AddForce(direction * moveSpeed, ForceMode2D.Impulse);
         }
-        MoveBody(velocity, speed);
     }
-    public void MoveBody(Vector2 playerForce, float playerSpeed)
+
+    private void Dash(object sender, EventArgs arguments)
     {
-        playerForce *= playerSpeed;
-        controller.rigidBody.AddForce(playerForce);
+        if (Time.time >= nextDashTime)
+        {
+            isDashing = true;
+            remainingDashDuration = 0.075f; // set these values as vars in the scriptable object; remember to not leave these hard-coded
+            nextDashTime = Time.time + 0.5f;
+            // dash direction constant for the whole length of the dash; player cannot change direction while dashing
+            dashDirection = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical")).normalized;
+        }
     }
 }
